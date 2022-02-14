@@ -1,0 +1,272 @@
+---
+title: "IMABC Calibration Report"
+author: "Pedro Nascimento de Lima"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+params:
+  versions: !r c("2.6")                  # model versios to include
+  scenarios: !r c(1,2,3)                    # scenarios to include
+  rounds: !r c("07") # c("01","03","05", "06")   # run "rounds" to include
+  filter_experiments: !r FALSE             # whether or not to filter experiments
+  experiments_to_select: !r c("v2.6_1.07", "v2.6_4.04") # which specific experiments to include in the report.
+#output:
+#  md_document:
+#    variant: markdown_github
+#    toc: true
+#    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, fig.width = 10, fig.height = 6)
+# Change your base_path accordingly:
+#base_path = "/lcrc/project/EMEWS/plima/crcspin-imabc/"
+#setwd(base_path)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(patchwork)
+library(ggforce)
+library(here)
+library(randplot)
+library(future)
+library(furrr)
+# install with remotes::install_github("https://github.com/RANDCorporation/randplot")
+
+# Using here because of R markdown.
+source(paste0(here::here(),"/R/calibration_report_functions.R"))
+source(paste0(here::here(),"/R/user_fns/range_check.R"))
+source(paste0(here::here(),"/R/scenarios.R"))
+```
+
+## Intro
+
+This file is used to generate plots and summary statistics for a calibration campaign using IMABC. This code is most useful to compare a few different experiments (either different iterations or separate calibrations).
+
+## Reading Experiments
+
+Here we read the experiment results:
+
+```{r read_experiments}
+
+# anl path: "/lcrc/project/EMEWS/plima/crcspin-imabc/"
+results_path = "/lcrc/project/EMEWS/plima/crcspin-imabc/experiments/"
+#results_path = "/Users/plima/Documents/OneDrive/crcspin-imabc/experiments/"
+
+# You can select different experiments under the ./experiment folders. 
+# Here I select the most recent run for each of the scenarios. This may also be useful to compare iterations.
+version = params$versions
+scenario = params$scenarios
+round = params$rounds
+
+# Creating a table of experiments:
+experiments_df = expand_grid(version, scenario, round) %>%
+  mutate(experiment = paste0(version, ".", scenario, ".", round))
+
+if(params$filter_experiments){
+  experiments_df = experiments_df %>%
+    dplyr::filter(experiment %in% params$experiments_to_select)
+}
+
+
+# Comparing Different Experiments:
+# Progression:
+experiments = experiments_df$experiment 
+
+#experiments = c("v2.5_1.03.05", "v2.6_1.01")
+experiment_names = experiments
+# experiments = c("v2.5_1.03.05", "v2.5_2.03.04", "v2.5_3.03.05", "v2.5_4.03.05", "v2.6_1.01")
+# experiment_names = c("a:20, s:high", "a:15, s:high", "a:10, s:high", "a:20, s:med", "v2.6_1")
+
+
+# Read each file from all the experiment folders:
+distances = get_experiments_results(file_name = "SimulatedDistances", results_path = results_path, experiments = experiments, experiment_names = experiment_names)
+parameters = get_experiments_results(file_name = "SimulatedParameters", results_path = results_path, experiments = experiments, experiment_names = experiment_names)
+targets = get_experiments_results(file_name = "SimulatedTargets", results_path = results_path, experiments = experiments, experiment_names = experiment_names)
+current_targets = get_experiments_results(file_name = "CurrentTargets", results_path = results_path, experiments = experiments, experiment_names = experiment_names)
+good_params = get_experiments_results(file_name = "Good_SimulatedParameters", results_path = results_path, experiments = experiments, experiment_names = experiment_names) %>%
+  dplyr::left_join(experiments_df, by = "experiment")
+good_targets = get_experiments_results(file_name = "Good_SimulatedTargets", results_path = results_path, experiments = experiments, experiment_names = experiment_names)
+
+# Joining some of these files:
+distance_parameters = distances %>% 
+  left_join(parameters, by = c("experiment", "iter", "draw", "step"))
+
+distance_parameters$non_nas = 42 - apply(distance_parameters, MARGIN = 1, function(x) sum(is.na(x)))
+
+good_targets_params = good_targets %>%
+  left_join(good_params, by = c("experiment", "iter", "draw", "step"))
+
+# Vector of parameter and target names:
+param_names = read.csv(file = "./data/inputs/priors_v2.6.1.csv", stringsAsFactors = F) %>%
+  filter(dist_base_name != "fixed") %>%
+  .$parameter_name
+  
+target_names = colnames(targets)[4:length(targets)-1]
+
+# Obtain target names and groups and 
+orig_targets = read.csv(file = "./data/inputs/targets_v2.6.csv", stringsAsFactors = F)
+# removes everything that comes before the first _
+orig_targets$short_names = sub(".+?_", "", orig_targets$target_names)
+
+# Update the current_targets object with those names:
+current_targets$target_group = orig_targets$target_group
+current_targets$short_names = orig_targets$short_names
+
+# This is useful for plotting target values:
+long_good_targets = good_targets %>%
+  tidyr::pivot_longer(cols = all_of(target_names) ,names_to = "target_names") %>%
+  left_join(current_targets %>% select(target_names, target_group, short_names), by = "target_names")
+
+s_colors = randplot::RandCatPal[1:length(unique(good_params$experiment))]
+
+# This is setting the default themes and colors. Will need to change if # of scenarios is not 4:
+ggplot <- function(...) ggplot2::ggplot(...) + scale_color_manual(values = s_colors) + scale_fill_manual(values = s_colors) + theme_bw() + theme(legend.position = "top")
+
+# Write summary files:
+write.csv(x = current_targets, "./analysis/current_targets.csv")
+
+```
+
+Calculate additional results for each good parameter:
+
+```{r}
+
+# system.time({
+#   purrr::pmap_dfr(.l = good_params, .f = interpretable_param_outcomes, scenarios_list = scenarios_list)  
+# })
+# without registering the parallel backend:
+plan(multisession, workers = 30) # use multisession for windows (PSOK)
+system.time({
+  additional_results = furrr::future_pmap_dfr(.l = good_params, .f = interpretable_param_outcomes, scenarios_list = scenarios_list)  
+})
+plan(sequential)
+
+
+
+```
+
+This table defines the experiments included in the report:
+
+```{r}
+experiments_df
+```
+
+And this list includes the inputs used within each scenario:
+
+```{r}
+scenarios_list
+```
+
+
+## Number of good parameters per experiment:
+
+```{r}
+good_params %>%
+  group_by(experiment) %>%
+  summarise(max_iter = max(iter),
+            n_good = n())
+```
+
+
+## Number of good parameters per iteration and experiment:
+
+```{r}
+good_params %>%
+  group_by(experiment, iter) %>%
+  summarise(n_good = n()) %>%
+  tidyr::pivot_wider(names_from = "experiment", values_from = "n_good")
+```
+
+## Density Plots for parameters
+
+```{r density-plots, fig.height=5, fig.width=5}
+
+param_names = c(param_names, names(additional_results)[40:65])
+
+# Density plot for all parameters:
+for(param_x in param_names){
+  print(density_plot_by_experiment(data = additional_results, param_x))
+}
+```
+
+## Parameter Pairs plot
+
+This plot is more useful with a handful of parameters each time:
+
+Risk:
+
+```{r pairs1}
+pairs_plot(good_params, param_names[grep("ar\\.", param_names)])
+
+
+# GGally::ggpairs(data = good_params,columns = param_names[1:7], 
+#                 mapping = aes(color = experiment),
+#                 upper = list(continuous = "density", combo = "box_no_facet"),
+#                 lower = list(continuous = "points", combo = "dot_no_facet"))
+
+```
+
+Cum Risk and Exp. Prevalence:
+
+```{r}
+pairs_plot(additional_results, param_names[grep("cum.risk.", param_names)])
+pairs_plot(additional_results, param_names[grep("prev.", param_names)])
+pairs_plot(additional_results, param_names[c(grep("mean_time10", param_names), grep("pct_10mm", param_names))])
+pairs_plot(additional_results, param_names[grep("m.size.at", param_names)])
+pairs_plot(additional_results, param_names[c(grep("mst_", param_names), grep("medst", param_names))])
+```
+
+Growth:
+
+```{r pairs2}
+pairs_plot(good_params, param_names[grep("growth\\.", param_names)])
+```
+
+Trans:
+
+```{r pairs3}
+pairs_plot(good_params, param_names[grep("trans\\.prob\\.", param_names)])
+```
+
+Mst:
+
+```{r pairs4}
+pairs_plot(good_params, param_names[grep("mst\\.", param_names)])
+```
+
+## Targets and Parameters:
+
+One can also use the same pairs plot on the targets and parameters:
+
+```{r pairs5}
+pairs_plot(data = good_targets_params,variables = c("ar.mean", "Lieberman_pct_crc_10plusmm", "Church_pct_crc_10plusmm"))
+```
+
+## Targets
+
+This plot is clearly trying to show too much in one figure. The grey area are the final target bounds.
+
+```{r}
+
+# Use the plot target function to plot all targets:
+all_targets_but_seer_plot = plot_targets(targets_def = orig_targets, current_targets = current_targets, long_good_targets = long_good_targets,  target_groups =  c("Pickhardt", "Church", "Corley", "Lieberman", "UKFSS"))
+
+seer_targets_plot = plot_targets(targets_def = orig_targets, current_targets = current_targets, long_good_targets = long_good_targets, target_groups =  c("SEER"))
+
+all_targets_but_seer_plot
+seer_targets_plot
+
+```
+
+
+```{r eval=FALSE, include=FALSE}
+
+# Use the plot target function to plot all targets:
+all_targets_but_seer_plot / seer_targets_plot + plot_layout(guides = "collect") & theme(legend.position = 'bottom')
+
+```
+
+
