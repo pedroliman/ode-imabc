@@ -13,10 +13,10 @@ SIR.model <- function(t, parms = c(bet = 1.5, gamm = 0.3), targets = NA, range_c
     with(as.list(c(state,parms, list(targets = targets), range_check)),{
 
       # max time_step at which to do range_chekcing
-      max_time_step = 0.1
+      max_time_step = 0.05
 
       # Just do range checking when we're close enough to the integer - avoid integration problems.
-      if(range_check & time > 1 & time %% 1 < max_time_step){
+      if(range_check & time > 1 & time %% 1 <= max_time_step){
         #implement range checking here:
         i = findInterval(x = time, lb$time)
 
@@ -107,12 +107,15 @@ sim_targets = function(parms, targets, range_check) {
 
 
 tic()
-sim_targets(parms = c(bet = 1.5, gamm = 0.3), targets = targets, range_check = T)
+sim_targets(parms = c(bet = 1.5, gamm = 0.3), targets = targets, range_check = F)
+toc()
+
+# can cut run-time in half.
+tic()
+sim_targets(parms = c(bet = 3, gamm = 0.3), targets = targets, range_check = F)
 toc()
 
 
 tic()
 sim_targets(parms = c(bet = 3, gamm = 0.3), targets = targets, range_check = T)
 toc()
-
-
