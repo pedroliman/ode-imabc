@@ -1,23 +1,19 @@
-# Code to run model from bash: Should accept the following arguments:
-# "$WORKING_DIR"
-# "$PARAMS"
-# "$JSON_LB"
-# "$JSON_UB"
-# "$RESULT_FILE"
+# Code to run model from the terminal: Should accept the following arguments:
+# "$WORKING_DIR" - working directory
+# "$PARAMS" - named vector of parameters in json
+# "$JSON_LB" - named lower bounds in json
+# "$JSON_UB" - named upper bounds in json
+# "$RESULT_FILE" - path where we should save the results file in json
 
 # libraries
-library(crcspin)
-print("run_model.R: which crcspin")
-print(system.file(package = "crcspin"))
-#library(crcscreen)
 library(tidyr)
-#library(doParallel)
-library(lubridate)
-#library(pryr)
-#library(MASS) # MASS needs to be loaded for dplyr or else select breaks - not true so far.
-library(data.table)
-library(jsonlite)
 library(dplyr)
+library(jsonlite)
+library(deSolve)
+library(imabc)
+print("imabc.R: which imabc")
+print(system.file(package = "imabc"))
+
 print("run_model.R: which R")
 print(R.home())
 
@@ -56,7 +52,6 @@ invisible(sapply(X = paste0(list.files(path =  functions_path, pattern = "*.R",f
 # If desired, one can set the same seed for all runs:
 # Set the seed here. note that this code is ran for each parameter set.
 # set.seed(123456)
-
 string_seed = params$seed
 
 # convert seed from a string to a vector of integers:
@@ -72,17 +67,12 @@ assign(".Random.seed", integer_seed, envir = .GlobalEnv, inherits = F)
 # .Random.seed <- integer_seed
 
 # adjust parameter vector -> get rid of the seed and convert to numeric.
-# We may want to use this seed later.
-# Remove seed from the vector of parameters:
 params$seed = NULL
 params = params %>% unlist() %>% as.numeric()
 names(params) = read.csv(paste0(working_dir, "/priors.csv"), header = TRUE, stringsAsFactors = FALSE)[,1]
 
 # create imabc target object, replace current bounds with information from imabc.
-# TODO: Check with carolyn and Jonathan that this is the intended use.
-crcspin_targets = read.csv(paste0(working_dir, "/targets.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
-  # Incorporate the group target name in to the simple target name. This resolves issue with Church and Lieberman targets, 
-  #   which otherwise have the same names
+targets = read.csv(paste0(working_dir, "/targets.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
   mutate(current_lower_bounds = as.numeric(json_lb)) %>%
   mutate(current_upper_bounds = as.numeric(json_ub)) %>%
   imabc::as.targets(.data)
@@ -95,15 +85,14 @@ dput(params)
 # Define Scenario inputs:
 # Scenarios are meant to be a list of few hyper-parameters to the calibration exercise.
 # We can "add" scenarios to the calibration exercise.
-# Scenarios must be coded as integers.
-
+# Scenarios numbers must be coded as integers.
 scenarios_file = paste0(r_root, "/scenarios.R")
 source(scenarios_file)
 scenario_inputs = scenarios_list[[scenario]]
 
 print(scenario_inputs)
 
-# test to see how many runs are unnecessary:
+# test to see how many runs are unnecessary with range checking
 #if(!range_check(params, risk_change_ages = scenario_inputs$risk_change_ages)){
 #  range_check_file = paste0(results_file, "_range_check_false")
 #  file.create(range_check_file)
@@ -111,14 +100,9 @@ print(scenario_inputs)
 # After running it, use this linux command to count how many files don't pass range_check:
 
 # this assumes that the parameters vector can be a named list.
-targets_results = sim_targets(parms_vec = params, 
-                              targets = crcspin_targets, 
-                              high_sens_weight = scenario_inputs$sens, 
-                              risk_change_ages = scenario_inputs$risk_change_ages)
-
-# save target results to the results file:
-
-# Let's assume params is a vector of numbers.
+targets_results = sim_targets(parms = params, 
+                              targets = targets, 
+                              range_check = cenario_inputs$range_check)
 
 # save the simulated targets as a json file:
 jsonlite::write_json(x = targets_results, path = results_file)
