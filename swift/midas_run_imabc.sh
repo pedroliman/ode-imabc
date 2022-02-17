@@ -46,7 +46,7 @@ export PROJECT=$CFG_PROJECT
 # if R cannot be found, then these will need to be
 # uncommented and set correctly.
 # export R_HOME=/path/to/R
-echo "BEBOP_RUN_IMABC_SH: USING R:"
+echo "MIDAS_RUN_IMABC_SH: USING R:"
 which R
 echo
 #export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$R_HOME/lib
@@ -57,7 +57,7 @@ echo
 # export PYTHONPATH
 # echo "PYTHONPATH: $PYTHONPATH"
 
-export SITE=bebop
+export SITE=midas
 
 # Resident task workers and ranks
 export TURBINE_RESIDENT_WORK_WORKERS=1
@@ -74,7 +74,9 @@ fi
 
 # EQ/R location
 # EQR=/lcrc/project/EMEWS/bebop/repos/spack/opt/spack/linux-centos7-broadwell/gcc-7.1.0/eqr-1.0-5hb4aszbbtezlifks6fz4g24zldnkdbx
-EQR=/lcrc/project/EMEWS/bebop/repos/spack/opt/spack/linux-centos7-broadwell/gcc-7.1.0/eqr-1.0-ukfkg3w6fxjbb3y5snzrysm2idggi7z6
+
+# TODO: replace EQR location with your location:
+EQR=/apps/install/eq-r/1.0
 
 
 # set machine to your schedule type (e.g. pbs, slurm, cobalt etc.),
@@ -135,6 +137,7 @@ USER_VARS=("MODEL_DIR" "STOP_AT" "MODEL_PROPS" \
 export TURBINE_LAUNCHER=srun
 # export TURBINE_SBATCH_ARGS="-c 18"
 
+# TODO: if needed, replace these paths with your paths.
 MKL=/lcrc/project/EMEWS/bebop/repos/spack/opt/spack/linux-centos7-broadwell/gcc-7.1.0/intel-mkl-2020.1.217-dqzfemzfucvgn2wdx7efg4swwp6zs7ww
 MKL_LIB=$MKL/mkl/lib/intel64
 MKL_OMP_LIB=$MKL/lib/intel64
@@ -152,8 +155,8 @@ swift-t -n $PROCS $MACHINE -p \
     -e TURBINE_LOG \
     -e TURBINE_DEBUG \
     -e ADLB_DEBUG \
-    -e LD_LIBRARY_PATH=$MKL_LIB:$LD_LIBRARY_PATH \
-    -e LD_PRELOAD=$LDP \
     $EMEWS_PROJECT_ROOT/swift/imabc_workflow.swift $CMD_LINE_ARGS
-
+    # if needed, add those environment variables back in
+    # -e LD_LIBRARY_PATH=$MKL_LIB:$LD_LIBRARY_PATH \
+    # -e LD_PRELOAD=$LDP \
 chmod g+rw $TURBINE_OUTPUT/*.tic

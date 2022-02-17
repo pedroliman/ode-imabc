@@ -10,10 +10,12 @@ library(tidyr)
 library(dplyr)
 library(jsonlite)
 library(deSolve)
+print("run_model.R: which deSolve")
+print(system.file(package = "deSolve"))
+print(packageVersion("deSolve"))
 library(imabc)
-print("imabc.R: which imabc")
+print("run_model.R: which imabc")
 print(system.file(package = "imabc"))
-
 print("run_model.R: which R")
 print(R.home())
 
@@ -102,7 +104,7 @@ print(scenario_inputs)
 # this assumes that the parameters vector can be a named list.
 targets_results = sim_targets(parms = params, 
                               targets = targets, 
-                              range_check = cenario_inputs$range_check)
+                              range_check = scenario_inputs$range_check)
 
 # save the simulated targets as a json file:
 jsonlite::write_json(x = targets_results, path = results_file)

@@ -19,7 +19,7 @@ string r_ranks[] = split(resident_work_ranks,",");
 string algo_file = argv("algo_file");
 string algo_params_file = argv("algo_params_file");
 
-file model_sh = input(emews_root+"/scripts/crcspin.sh");
+file model_sh = input(emews_root+"/scripts/model.sh");
 
 string scenario = argv("scenario");
 
