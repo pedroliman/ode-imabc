@@ -4,6 +4,11 @@ library(dplyr)
 library(tidyr)
 library(imabc)
 library(tictoc)
+library(parallel)
+library(doParallel)
+
+# registerDoParallel if needed:
+# registerDoParallel(cores = detectCores()-1)
 
 # source user functions:
 invisible(sapply(X = paste0(list.files(path =  "./R/user_fns", pattern = "*.R",full.names = T)),FUN = source, echo = F))

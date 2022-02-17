@@ -50,7 +50,7 @@ arg_array=("$EMEWS_PROJECT_ROOT/R/run_model.R"
 # MODEL_CMD="python -u ${arg_array[@]}"
 
 # For an R model:
-echo "CRCSPIN.SH: USING Rscript:"
+echo "MODEL.SH: USING Rscript:"
 which Rscript
 echo
 
