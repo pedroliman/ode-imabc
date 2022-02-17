@@ -3,13 +3,13 @@ library(deSolve)
 library(dplyr)
 library(tidyr)
 library(imabc)
+library(tictoc)
 
 # source user functions:
 invisible(sapply(X = paste0(list.files(path =  "./R/user_fns", pattern = "*.R",full.names = T)),FUN = source, echo = F))
 
 # Create ground_truth_data ------------------------------------------------
-ground_truth = model(t = 70, parms = c(bet = 1.5, gamm=0.3)) %>%
-  mutate(across(where(is.numeric), ~round(x = )))
+ground_truth = model(t = 70, parms = c(bet = 1.5, gamm=0.3))
 
 # Creating targets --------------------------------------------------------
 targets_df = lapply(ground_truth[,2:4], binom_ci, n = 200, alpha = 0.05, time = ground_truth$time) %>%
@@ -78,7 +78,27 @@ fn = function(bet, gamm){
 
 target_fun <- define_target_function(targets = targets_imabc,priors = priors, FUN = fn, use_seed = FALSE)
 
-imabc_results = imabc_results <- imabc(
+tic()
+imabc_results_direct = imabc_results <- imabc(
+  improve_method = "direct",
+  priors = priors,
+  targets = targets_imabc,
+  target_fun = target_fun,
+  seed = 54321,
+  N_start = 1000,
+  max_iter = 50,
+  max_fail_iter = 5,
+  N_centers = 3,
+  Center_n = 100,
+  N_cov_points = 50,
+  N_post = 10#,
+  #output_directory = "./imabc-results"
+)
+toc()
+
+
+tic()
+imabc_results_percentile = imabc_results <- imabc(
   improve_method = "percentile",
   priors = priors,
   targets = targets_imabc,
@@ -93,11 +113,16 @@ imabc_results = imabc_results <- imabc(
   N_post = 10#,
   #output_directory = "./imabc-results"
 )
+toc()
+
+
+imabc_results_direct$good_parm_draws$method = "direct"
+imabc_results_percentile$good_parm_draws$method = "percentile"
 
 library(ggplot2)
 
-imabc_results$good_parm_draws %>%
-  ggplot(data = ., mapping = aes(x = bet, y = gamm)) +
+rbind(imabc_results_direct$good_parm_draws, imabc_results_percentile$good_parm_draws) %>%
+  ggplot(data = ., mapping = aes(x = bet, y = gamm, color = method)) +
   geom_density2d() +
   geom_vline(xintercept = 1.5) +
   geom_hline(yintercept = 0.3)
