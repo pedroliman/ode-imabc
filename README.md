@@ -19,10 +19,7 @@ This project relies on `swift-t/1.5.0` (with python and R enabled), and the `EQR
 
 # HPC Scripts
 
-This repository uses EMEWS's EQ/R to perform calibration. The code in this repository was adapted from code generously supplied by Jonathan Ozik and Nick Collier. Before using this code, it is often helpful to read and understand EMEWS's documentation. I've added notes to this read-me file to support my use of their code, but be aware that the following instructions assume familiarity with EMEWS. 
-
-### What is `bebop`?
-`bebop` is the name of Argonne's cluster where I run most of those experiments. Before using this code, you should replace `bebop` with whatever 
+This repository uses EMEWS's EQ/R to perform calibration. The code in this repository was adapted from code generously supplied by Jonathan Ozik and Nick Collier. Before using this code, it is often helpful to read and understand EMEWS's documentation. I've added notes to this read-me file to support my use of their code, but be aware that the following instructions assume familiarity with EMEWS. You will see references to `bebop` in this file. `bebop` is an Argonne cluster where we run this workflow, so bear in mind you will replace `bebop` with the name of your cluster when using this. Also, note that these files may include a few hard-coded paths to libraries you will have to change. That said, adapting this for your own use should be much easier than trying to build this workflow from scratch.
 
 ## Calibration Scripts Overview
 
