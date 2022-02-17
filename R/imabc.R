@@ -7,6 +7,7 @@ library(lhs)
 library(imabc)
 print("imabc.R: which imabc")
 print(system.file(package = "imabc"))
+print(packageVersion("imabc"))
 library(doParallel)
 library(truncnorm)
 library(readr)
@@ -90,9 +91,18 @@ targets.path <- paste0(turbine_output,"/targets.csv")
 targets_df <- data.frame(read_csv(targets.path))
 targets <- as.targets(targets_df)
 
+other.args <- list(output_directory = turbine_output,
+                   targets=targets, priors = priors, backend_fun = b_fun)
+
+# starting draws copied to turbine_output if the file is specified
+starting.draws.path <- paste0(turbine_output,"/starting_draws.csv")
+if (file.exists(starting.draws.path)) {
+  starting.draws.df <- data.frame(read_csv(starting.draws.path))
+  other.args <- append(other.args, list(starting_draws=starting.draws.df))
+}
+
 # use modifyList to override items in algo.params$imabc.args
-imabc.args <- modifyList(algo.params$imabc.args, list(output_directory = turbine_output,
-                         targets=targets, priors = priors, backend_fun = b_fun))
+imabc.args <- modifyList(algo.params$imabc.args, other.args)
 
 # print(imabc.args$priors)
 # print(imabc.args$targets)
