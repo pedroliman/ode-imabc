@@ -138,7 +138,10 @@ export TURBINE_LAUNCHER=srun
 # export TURBINE_SBATCH_ARGS="-c 18"
 
 # TODO: if needed, replace these paths with your paths.
-MKL=/lcrc/project/EMEWS/bebop/repos/spack/opt/spack/linux-centos7-broadwell/gcc-7.1.0/intel-mkl-2020.1.217-dqzfemzfucvgn2wdx7efg4swwp6zs7ww
+# Bebop:
+#MKL=/lcrc/project/EMEWS/bebop/repos/spack/opt/spack/linux-centos7-broadwell/gcc-7.1.0/intel-mkl-2020.1.217-dqzfemzfucvgn2wdx7efg4swwp6zs7ww
+# MIDAS:
+MKL=/apps/install/mkl/2019.4.243
 MKL_LIB=$MKL/mkl/lib/intel64
 MKL_OMP_LIB=$MKL/lib/intel64
 LDP=$MKL_LIB/libmkl_def.so:$MKL_LIB/libmkl_avx2.so:$MKL_LIB/libmkl_core.so:$MKL_LIB/libmkl_intel_lp64.so:$MKL_LIB/libmkl_intel_thread.so:$MKL_OMP_LIB/libiomp5.so
@@ -155,8 +158,8 @@ swift-t -n $PROCS $MACHINE -p \
     -e TURBINE_LOG \
     -e TURBINE_DEBUG \
     -e ADLB_DEBUG \
+    -e LD_LIBRARY_PATH=$MKL_LIB:$LD_LIBRARY_PATH \
+    -e LD_PRELOAD=$LDP \
     $EMEWS_PROJECT_ROOT/swift/imabc_workflow.swift $CMD_LINE_ARGS
-    # if needed, add those environment variables back in
-    # -e LD_LIBRARY_PATH=$MKL_LIB:$LD_LIBRARY_PATH \
-    # -e LD_PRELOAD=$LDP \
+    
 chmod g+rw $TURBINE_OUTPUT/*.tic
