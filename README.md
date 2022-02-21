@@ -3,8 +3,6 @@
 
 This repository contains a calibration workflow for ODE models using IMABC and EMEWS. This is a testing ground and a starting point for other dynamic models that need to be calibrated with IMABC.
 
-I use this repository as a starting point when I need to calibrate an ODE model with IMABC.
-
 ## Test Scripts
 
 Use the file `R/ground_truth_tests.R` to perform small-scale calibration and test runs. When performing those runs, edit the scripts within the `./R` folder using R studio. Place any data files within the `./data` folder and refrain from adding unnecessary dependencies to the project.
